@@ -11561,6 +11561,10 @@ html {
   font-size: 1.5rem;
 }
 
+.portfolio-item-caption-content img{
+  width: 10%;
+  margin: 2rem;
+}
 .portfolio-modal .btn-close {
   color: #3e3e3e;
   font-size: 2rem;
