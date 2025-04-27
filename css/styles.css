@@ -673,7 +673,7 @@ progress {
   color: #6c757d;
 }
 .blockquote-footer::before {
-  content: "— ";
+  content: "— ";
 }
 
 .img-fluid {
@@ -3997,6 +3997,81 @@ textarea.form-control-lg {
 .btn-group-vertical > .btn-group:not(:first-child) {
   margin-top: -0.125rem;
 }
+
+/* --- NUEVO ESTILO TARJETAS LISTA PORTFOLIO --- */
+.portfolio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.portfolio-list-item {
+  display: flex;
+  align-items: flex-start;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 1.5rem 2rem;
+  transition: box-shadow 0.2s;
+  cursor: pointer;
+  min-height: 180px;
+}
+.portfolio-list-item:hover {
+  box-shadow: 0 4px 32px rgba(0,0,0,0.13);
+}
+
+.portfolio-list-img {
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-right: 2rem;
+  background: #f3f3f3;
+  flex-shrink: 0;
+}
+
+.portfolio-list-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.portfolio-list-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  color: #2c3e50;
+}
+
+.portfolio-list-role {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.portfolio-list-desc {
+  font-size: 1rem;
+  color: #444;
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .portfolio-list-item {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+  .portfolio-list-img {
+    width: 100%;
+    height: 180px;
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+}
+/* --- FIN NUEVO ESTILO TARJETAS LISTA --- */
 .btn-group-vertical > .btn:not(:last-child):not(.dropdown-toggle),
 .btn-group-vertical > .btn-group:not(:last-child) > .btn {
   border-bottom-right-radius: 0;
