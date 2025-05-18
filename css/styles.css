@@ -3109,6 +3109,7 @@ textarea.form-control-lg {
 .btn-primary {
   color: #fff;
   background-color: #5c5c5c;
+  border-radius: 0.5rem;
 }
 .btn-primary:hover {
   color: #fff;
@@ -4094,6 +4095,7 @@ textarea.form-control-lg {
 .nav-link {
   display: block;
   padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
   color: #3e3e3e;
   text-decoration: none;
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
