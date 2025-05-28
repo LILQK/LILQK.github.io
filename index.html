@@ -1361,29 +1361,231 @@
         <!-- Theme switcher and Portfolio animations -->
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                // Theme switcher
+                // Theme switcher with robust storage fallbacks
                 const themeToggleCheckbox = document.getElementById('theme-toggle-checkbox');
                 
-                // Function to toggle theme
+                // Robust storage manager to avoid tracking detection
+                const ThemeStorage = {
+                    // Check if storage is available and not blocked
+                    isStorageAvailable(type) {
+                        try {
+                            const storage = window[type];
+                            const testKey = '__storage_test__';
+                            storage.setItem(testKey, 'test');
+                            storage.removeItem(testKey);
+                            return true;
+                        } catch (e) {
+                            return false;
+                        }
+                    },
+                    
+                    // Check if cookies are enabled
+                    areCookiesEnabled() {
+                        try {
+                            document.cookie = '__cookie_test__=test; path=/';
+                            const enabled = document.cookie.indexOf('__cookie_test__=test') !== -1;
+                            // Clean up test cookie
+                            document.cookie = '__cookie_test__=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                            return enabled;
+                        } catch (e) {
+                            return false;
+                        }
+                    },
+                    
+                    // Try multiple storage methods as fallbacks
+                    setTheme(theme) {
+                        if (!theme || (theme !== 'light' && theme !== 'dark')) {
+                            console.warn('Invalid theme value:', theme);
+                            return false;
+                        }
+                        
+                        // Method 1: Try localStorage (most common, but blocked by privacy extensions)
+                        if (this.isStorageAvailable('localStorage')) {
+                            try {
+                                localStorage.setItem('user-theme-preference', theme);
+                                console.log('Theme saved to localStorage');
+                                return true;
+                            } catch (e) {
+                                console.log('localStorage failed:', e.message);
+                            }
+                        }
+                        
+                        // Method 2: Try sessionStorage (less persistent but often not blocked)
+                        if (this.isStorageAvailable('sessionStorage')) {
+                            try {
+                                sessionStorage.setItem('user-theme-preference', theme);
+                                console.log('Theme saved to sessionStorage');
+                                return true;
+                            } catch (e) {
+                                console.log('sessionStorage failed:', e.message);
+                            }
+                        }
+                        
+                        // Method 3: Use a simple cookie (often allowed)
+                        if (this.areCookiesEnabled()) {
+                            try {
+                                document.cookie = `user-theme-preference=${theme}; path=/; max-age=31536000; SameSite=Strict`;
+                                console.log('Theme saved to cookie');
+                                return true;
+                            } catch (e) {
+                                console.log('Cookie storage failed:', e.message);
+                            }
+                        }
+                        
+                        // Method 4: Store in HTML data attribute as last resort
+                        try {
+                            document.documentElement.setAttribute('data-stored-theme', theme);
+                            console.log('Theme saved to HTML attribute (session only)');
+                            return true;
+                        } catch (e) {
+                            console.error('All storage methods failed:', e.message);
+                            return false;
+                        }
+                    },
+                    
+                    getTheme() {
+                        // Try to get theme from localStorage first
+                        if (this.isStorageAvailable('localStorage')) {
+                            try {
+                                const stored = localStorage.getItem('user-theme-preference');
+                                if (stored && (stored === 'light' || stored === 'dark')) {
+                                    return stored;
+                                }
+                            } catch (e) {
+                                console.log('localStorage read failed:', e.message);
+                            }
+                        }
+                        
+                        // Try sessionStorage
+                        if (this.isStorageAvailable('sessionStorage')) {
+                            try {
+                                const stored = sessionStorage.getItem('user-theme-preference');
+                                if (stored && (stored === 'light' || stored === 'dark')) {
+                                    return stored;
+                                }
+                            } catch (e) {
+                                console.log('sessionStorage read failed:', e.message);
+                            }
+                        }
+                        
+                        // Try cookies
+                        if (this.areCookiesEnabled()) {
+                            try {
+                                const cookies = document.cookie.split(';');
+                                for (let cookie of cookies) {
+                                    const [name, value] = cookie.trim().split('=');
+                                    if (name === 'user-theme-preference' && (value === 'light' || value === 'dark')) {
+                                        return value;
+                                    }
+                                }
+                            } catch (e) {
+                                console.log('Cookie read failed:', e.message);
+                            }
+                        }
+                        
+                        // Try HTML data attribute
+                        try {
+                            const htmlStored = document.documentElement.getAttribute('data-stored-theme');
+                            if (htmlStored && (htmlStored === 'light' || htmlStored === 'dark')) {
+                                return htmlStored;
+                            }
+                        } catch (e) {
+                            console.log('HTML attribute read failed:', e.message);
+                        }
+                        
+                        // Default: check system preference with fallback
+                        try {
+                            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                        } catch (e) {
+                            console.log('System preference detection failed, defaulting to light theme');
+                            return 'light';
+                        }
+                    }
+                };
+                
+                // Function to toggle theme with error handling
                 function toggleTheme() {
-                    const html = document.documentElement;
-                    const currentTheme = html.getAttribute('data-theme');
-                    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                    
-                    html.setAttribute('data-theme', newTheme);
-                    localStorage.setItem('theme', newTheme);
-                    
-                    // Update checkbox state based on theme
-                    themeToggleCheckbox.checked = newTheme === 'dark';
+                    try {
+                        const html = document.documentElement;
+                        const currentTheme = html.getAttribute('data-theme') || 'light';
+                        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                        
+                        html.setAttribute('data-theme', newTheme);
+                        
+                        // Try to save the theme preference
+                        const saved = ThemeStorage.setTheme(newTheme);
+                        if (!saved) {
+                            console.warn('Theme preference could not be saved, will reset on page reload');
+                        }
+                        
+                        // Update checkbox state based on theme
+                        if (themeToggleCheckbox) {
+                            themeToggleCheckbox.checked = newTheme === 'dark';
+                        }
+                        
+                        // Dispatch custom event for other scripts that might need to know about theme changes
+                        try {
+                            const event = new CustomEvent('themeChanged', { 
+                                detail: { theme: newTheme, saved: saved } 
+                            });
+                            document.dispatchEvent(event);
+                        } catch (e) {
+                            console.log('Could not dispatch theme change event:', e.message);
+                        }
+                        
+                    } catch (e) {
+                        console.error('Theme toggle failed:', e.message);
+                        // Fallback: at least try to toggle the visual theme
+                        try {
+                            const html = document.documentElement;
+                            const currentTheme = html.getAttribute('data-theme') || 'light';
+                            html.setAttribute('data-theme', currentTheme === 'dark' ? 'light' : 'dark');
+                        } catch (fallbackError) {
+                            console.error('Even fallback theme toggle failed:', fallbackError.message);
+                        }
+                    }
                 }
                 
-                // Set initial checkbox state based on theme
-                const storedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-                document.documentElement.setAttribute('data-theme', storedTheme);
-                themeToggleCheckbox.checked = storedTheme === 'dark';
+                // Initialize theme on page load with comprehensive error handling
+                function initializeTheme() {
+                    try {
+                        const storedTheme = ThemeStorage.getTheme();
+                        document.documentElement.setAttribute('data-theme', storedTheme);
+                        
+                        if (themeToggleCheckbox) {
+                            themeToggleCheckbox.checked = storedTheme === 'dark';
+                            // Add change event listener with error handling
+                            themeToggleCheckbox.addEventListener('change', function(e) {
+                                try {
+                                    toggleTheme();
+                                } catch (error) {
+                                    console.error('Theme toggle event handler failed:', error.message);
+                                    // Prevent the checkbox from changing if toggle failed
+                                    e.preventDefault();
+                                }
+                            });
+                        } else {
+                            console.warn('Theme toggle checkbox not found - theme switching may not work');
+                        }
+                        
+                        console.log('Theme initialized successfully:', storedTheme);
+                        
+                    } catch (e) {
+                        console.error('Theme initialization failed:', e.message);
+                        // Fallback: set light theme
+                        try {
+                            document.documentElement.setAttribute('data-theme', 'light');
+                            if (themeToggleCheckbox) {
+                                themeToggleCheckbox.checked = false;
+                            }
+                        } catch (fallbackError) {
+                            console.error('Theme initialization fallback failed:', fallbackError.message);
+                        }
+                    }
+                }
                 
-                // Add change event listener
-                themeToggleCheckbox.addEventListener('change', toggleTheme);
+                // Initialize theme
+                initializeTheme();
 
                 // Portfolio animations
                 const observerOptions = {

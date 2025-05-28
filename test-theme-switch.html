@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba del Switch de Tema</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --border-color: #cccccc;
+        }
+        
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --border-color: #444444;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin: 20px 0;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        .log {
+            background-color: #f8f9fa;
+            color: #212529;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Prueba del Switch de Tema Robusto</h1>
+        
+        <div class="test-section">
+            <h2>Control del Tema</h2>
+            <label class="switch">
+                <input type="checkbox" id="theme-toggle-checkbox">
+                <span class="slider"></span>
+            </label>
+            <span>Modo Oscuro</span>
+        </div>
+        
+        <div class="test-section">
+            <h2>Estado del Almacenamiento</h2>
+            <div id="storage-status"></div>
+            <button onclick="testStorageMethods()">Probar Métodos de Almacenamiento</button>
+            <button onclick="simulateBlockedStorage()">Simular Almacenamiento Bloqueado</button>
+            <button onclick="restoreStorage()">Restaurar Almacenamiento</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Pruebas de Funcionalidad</h2>
+            <button onclick="testThemeToggle()">Probar Toggle de Tema</button>
+            <button onclick="testThemePersistence()">Probar Persistencia</button>
+            <button onclick="clearAllStorage()">Limpiar Todo el Almacenamiento</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Log de Eventos</h2>
+            <div id="log" class="log"></div>
+            <button onclick="clearLog()">Limpiar Log</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales para las pruebas
+        let originalLocalStorage = window.localStorage;
+        let originalSessionStorage = window.sessionStorage;
+        let storageBlocked = false;
+        
+        // Función de logging
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logElement.textContent += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // También log a la consola
+            console.log(logEntry.trim());
+        }
+        
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+        
+        // Incluir el código del ThemeStorage aquí (copiado del index.html)
+        const ThemeStorage = {
+            // Check if storage is available and not blocked
+            isStorageAvailable(type) {
+                try {
+                    const storage = window[type];
+                    const testKey = '__storage_test__';
+                    storage.setItem(testKey, 'test');
+                    storage.removeItem(testKey);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            },
+            
+            // Check if cookies are enabled
+            areCookiesEnabled() {
+                try {
+                    document.cookie = '__cookie_test__=test; path=/';
+                    const enabled = document.cookie.indexOf('__cookie_test__=test') !== -1;
+                    // Clean up test cookie
+                    document.cookie = '__cookie_test__=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                    return enabled;
+                } catch (e) {
+                    return false;
+                }
+            },
+            
+            // Try multiple storage methods as fallbacks
+            setTheme(theme) {
+                if (!theme || (theme !== 'light' && theme !== 'dark')) {
+                    log(`Invalid theme value: ${theme}`, 'warning');
+                    return false;
+                }
+                
+                // Method 1: Try localStorage
+                if (this.isStorageAvailable('localStorage')) {
+                    try {
+                        localStorage.setItem('user-theme-preference', theme);
+                        log('Theme saved to localStorage', 'success');
+                        return true;
+                    } catch (e) {
+                        log(`localStorage failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Method 2: Try sessionStorage
+                if (this.isStorageAvailable('sessionStorage')) {
+                    try {
+                        sessionStorage.setItem('user-theme-preference', theme);
+                        log('Theme saved to sessionStorage', 'success');
+                        return true;
+                    } catch (e) {
+                        log(`sessionStorage failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Method 3: Use cookies
+                if (this.areCookiesEnabled()) {
+                    try {
+                        document.cookie = `user-theme-preference=${theme}; path=/; max-age=31536000; SameSite=Strict`;
+                        log('Theme saved to cookie', 'success');
+                        return true;
+                    } catch (e) {
+                        log(`Cookie storage failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Method 4: HTML attribute
+                try {
+                    document.documentElement.setAttribute('data-stored-theme', theme);
+                    log('Theme saved to HTML attribute (session only)', 'warning');
+                    return true;
+                } catch (e) {
+                    log(`All storage methods failed: ${e.message}`, 'error');
+                    return false;
+                }
+            },
+            
+            getTheme() {
+                // Try localStorage first
+                if (this.isStorageAvailable('localStorage')) {
+                    try {
+                        const stored = localStorage.getItem('user-theme-preference');
+                        if (stored && (stored === 'light' || stored === 'dark')) {
+                            log(`Theme loaded from localStorage: ${stored}`, 'success');
+                            return stored;
+                        }
+                    } catch (e) {
+                        log(`localStorage read failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Try sessionStorage
+                if (this.isStorageAvailable('sessionStorage')) {
+                    try {
+                        const stored = sessionStorage.getItem('user-theme-preference');
+                        if (stored && (stored === 'light' || stored === 'dark')) {
+                            log(`Theme loaded from sessionStorage: ${stored}`, 'success');
+                            return stored;
+                        }
+                    } catch (e) {
+                        log(`sessionStorage read failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Try cookies
+                if (this.areCookiesEnabled()) {
+                    try {
+                        const cookies = document.cookie.split(';');
+                        for (let cookie of cookies) {
+                            const [name, value] = cookie.trim().split('=');
+                            if (name === 'user-theme-preference' && (value === 'light' || value === 'dark')) {
+                                log(`Theme loaded from cookie: ${value}`, 'success');
+                                return value;
+                            }
+                        }
+                    } catch (e) {
+                        log(`Cookie read failed: ${e.message}`, 'error');
+                    }
+                }
+                
+                // Try HTML attribute
+                try {
+                    const htmlStored = document.documentElement.getAttribute('data-stored-theme');
+                    if (htmlStored && (htmlStored === 'light' || htmlStored === 'dark')) {
+                        log(`Theme loaded from HTML attribute: ${htmlStored}`, 'warning');
+                        return htmlStored;
+                    }
+                } catch (e) {
+                    log(`HTML attribute read failed: ${e.message}`, 'error');
+                }
+                
+                // Default: system preference
+                try {
+                    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const defaultTheme = systemDark ? 'dark' : 'light';
+                    log(`Using system preference: ${defaultTheme}`, 'info');
+                    return defaultTheme;
+                } catch (e) {
+                    log('System preference detection failed, defaulting to light theme', 'warning');
+                    return 'light';
+                }
+            }
+        };
+        
+        // Función para toggle del tema
+        function toggleTheme() {
+            try {
+                const html = document.documentElement;
+                const currentTheme = html.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                html.setAttribute('data-theme', newTheme);
+                
+                const saved = ThemeStorage.setTheme(newTheme);
+                if (!saved) {
+                    log('Theme preference could not be saved, will reset on page reload', 'warning');
+                }
+                
+                const checkbox = document.getElementById('theme-toggle-checkbox');
+                if (checkbox) {
+                    checkbox.checked = newTheme === 'dark';
+                }
+                
+                log(`Theme toggled to: ${newTheme}`, 'info');
+                
+            } catch (e) {
+                log(`Theme toggle failed: ${e.message}`, 'error');
+            }
+        }
+        
+        // Funciones de prueba
+        function testStorageMethods() {
+            const statusDiv = document.getElementById('storage-status');
+            let html = '<h3>Estado de los Métodos de Almacenamiento:</h3>';
+            
+            // Test localStorage
+            const localStorageAvailable = ThemeStorage.isStorageAvailable('localStorage');
+            html += `<div class="status ${localStorageAvailable ? 'success' : 'error'}">
+                localStorage: ${localStorageAvailable ? 'Disponible' : 'Bloqueado/No disponible'}
+            </div>`;
+            
+            // Test sessionStorage
+            const sessionStorageAvailable = ThemeStorage.isStorageAvailable('sessionStorage');
+            html += `<div class="status ${sessionStorageAvailable ? 'success' : 'error'}">
+                sessionStorage: ${sessionStorageAvailable ? 'Disponible' : 'Bloqueado/No disponible'}
+            </div>`;
+            
+            // Test cookies
+            const cookiesEnabled = ThemeStorage.areCookiesEnabled();
+            html += `<div class="status ${cookiesEnabled ? 'success' : 'error'}">
+                Cookies: ${cookiesEnabled ? 'Habilitadas' : 'Bloqueadas/Deshabilitadas'}
+            </div>`;
+            
+            // HTML attributes always work
+            html += `<div class="status success">
+                Atributos HTML: Siempre disponibles
+            </div>`;
+            
+            statusDiv.innerHTML = html;
+            log('Storage methods tested', 'info');
+        }
+        
+        function simulateBlockedStorage() {
+            // Simular localStorage bloqueado
+            Object.defineProperty(window, 'localStorage', {
+                value: {
+                    setItem: () => { throw new Error('localStorage is blocked'); },
+                    getItem: () => { throw new Error('localStorage is blocked'); },
+                    removeItem: () => { throw new Error('localStorage is blocked'); }
+                },
+                writable: false
+            });
+            
+            // Simular sessionStorage bloqueado
+            Object.defineProperty(window, 'sessionStorage', {
+                value: {
+                    setItem: () => { throw new Error('sessionStorage is blocked'); },
+                    getItem: () => { throw new Error('sessionStorage is blocked'); },
+                    removeItem: () => { throw new Error('sessionStorage is blocked'); }
+                },
+                writable: false
+            });
+            
+            storageBlocked = true;
+            log('Storage methods blocked (simulation)', 'warning');
+            testStorageMethods();
+        }
+        
+        function restoreStorage() {
+            if (storageBlocked) {
+                Object.defineProperty(window, 'localStorage', {
+                    value: originalLocalStorage,
+                    writable: true
+                });
+                
+                Object.defineProperty(window, 'sessionStorage', {
+                    value: originalSessionStorage,
+                    writable: true
+                });
+                
+                storageBlocked = false;
+                log('Storage methods restored', 'success');
+                testStorageMethods();
+            }
+        }
+        
+        function testThemeToggle() {
+            log('Testing theme toggle...', 'info');
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+            toggleTheme();
+            
+            setTimeout(() => {
+                const newTheme = document.documentElement.getAttribute('data-theme');
+                if (newTheme !== currentTheme) {
+                    log(`Theme toggle successful: ${currentTheme} → ${newTheme}`, 'success');
+                } else {
+                    log('Theme toggle failed - theme did not change', 'error');
+                }
+            }, 100);
+        }
+        
+        function testThemePersistence() {
+            log('Testing theme persistence...', 'info');
+            const testTheme = 'dark';
+            const saved = ThemeStorage.setTheme(testTheme);
+            
+            if (saved) {
+                const retrieved = ThemeStorage.getTheme();
+                if (retrieved === testTheme) {
+                    log(`Theme persistence test passed: ${testTheme}`, 'success');
+                } else {
+                    log(`Theme persistence test failed: saved ${testTheme}, got ${retrieved}`, 'error');
+                }
+            } else {
+                log('Theme persistence test failed: could not save theme', 'error');
+            }
+        }
+        
+        function clearAllStorage() {
+            try {
+                if (ThemeStorage.isStorageAvailable('localStorage')) {
+                    localStorage.removeItem('user-theme-preference');
+                }
+                if (ThemeStorage.isStorageAvailable('sessionStorage')) {
+                    sessionStorage.removeItem('user-theme-preference');
+                }
+                document.cookie = 'user-theme-preference=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                document.documentElement.removeAttribute('data-stored-theme');
+                log('All storage cleared', 'info');
+            } catch (e) {
+                log(`Error clearing storage: ${e.message}`, 'error');
+            }
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggleCheckbox = document.getElementById('theme-toggle-checkbox');
+            
+            // Inicializar tema
+            const storedTheme = ThemeStorage.getTheme();
+            document.documentElement.setAttribute('data-theme', storedTheme);
+            
+            if (themeToggleCheckbox) {
+                themeToggleCheckbox.checked = storedTheme === 'dark';
+                themeToggleCheckbox.addEventListener('change', toggleTheme);
+            }
+            
+            // Ejecutar pruebas iniciales
+            testStorageMethods();
+            
+            log('Theme switch test page initialized', 'info');
+            log(`Initial theme: ${storedTheme}`, 'info');
+        });
+    </script>
+</body>
+</html> 
